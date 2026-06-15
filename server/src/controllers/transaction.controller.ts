@@ -40,21 +40,55 @@ export const createTransaction = async (req: AuthRequest,res: Response) => {
 
 export const getTransactions = async (req: AuthRequest,res: Response) => {
   try {
-    const { category } = req.query;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
 
-    const transactions = await prisma.transaction.findMany({
-      where: {
-        userId: req.userId,
-        ...(category ? { category: String(category) } : {}),
-      },
-      orderBy: {
-        date: "desc",
-      },
-    });
+    const skip = (page - 1)*limit;
+
+    const { category ,startDate,endDate} = req.query;
+    const where:any ={
+      userId: req.userId,
+    }
+
+    if(category){
+      where.category = String(category);
+    }
+
+    if(startDate || endDate){
+      where.date = {};
+      if(startDate){
+        where.date.gte = new Date(String(startDate));
+      }
+      if(endDate){
+        where.date.lte = new Date(String(endDate));
+      }
+    }
+    const [transactions, total] = await Promise.all([
+        prisma.transaction.findMany({
+          where,
+          orderBy: {
+            date: "desc",
+          },
+          skip,
+          take: limit,
+        }),
+
+        prisma.transaction.count({
+          where,
+        }),
+      ]);
 
     return res.json({
       success: true,
       data: transactions,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(
+          total / limit
+        ),
+      },
     });
   } catch (error) {
     console.error(error);
