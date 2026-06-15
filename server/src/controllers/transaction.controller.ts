@@ -6,16 +6,9 @@ export const createTransaction = async (req: AuthRequest,res: Response) => {
   try {
     const { amount, category, type, date, note } = req.body;
 
-    if (!amount || !category || !type || !date) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields",
-      });
-    }
-
     const transaction = await prisma.transaction.create({
       data: {
-        amount: Number(amount),
+        amount,
         category,
         type,
         date: new Date(date),
@@ -38,67 +31,85 @@ export const createTransaction = async (req: AuthRequest,res: Response) => {
   }
 }
 
-export const getTransactions = async (req: AuthRequest,res: Response) => {
+export const getTransactions = async (req: AuthRequest, res: Response) => {
   try {
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 10;
+    const {
+      page = 1,
+      limit = 10,
+      category,
+      type,
+      startDate,
+      endDate,
+      sortBy = "date",
+      order = "desc",
+    } = req.query as {
+      page?: number;
+      limit?: number;
+      category?: string;
+      type?: string;
+      startDate?: string;
+      endDate?: string;
+      sortBy?: string;
+      order?: string;
+    };
 
-    const skip = (page - 1)*limit;
-
-    const { category ,startDate,endDate} = req.query;
-    const where:any ={
+    const where: any = {
       userId: req.userId,
+    };
+
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+
+    if (category) {
+      where.category = category;
     }
 
-    if(category){
-      where.category = String(category);
+    if (type) {
+      where.type = type;
     }
 
-    if(startDate || endDate){
+    if (startDate || endDate) {
       where.date = {};
-      if(startDate){
-        where.date.gte = new Date(String(startDate));
+      if (startDate) {
+        where.date.gte = new Date(startDate);
       }
-      if(endDate){
-        where.date.lte = new Date(String(endDate));
+      if (endDate) {
+        where.date.lte = new Date(endDate);
       }
     }
-    const [transactions, total] = await Promise.all([
-        prisma.transaction.findMany({
-          where,
-          orderBy: {
-            date: "desc",
-          },
-          skip,
-          take: limit,
-        }),
 
-        prisma.transaction.count({
-          where,
-        }),
-      ]);
+    const [transactions, total] = await Promise.all([
+      prisma.transaction.findMany({
+        where,
+        skip: (pageNumber - 1)*limitNumber,
+        take: limitNumber,
+        orderBy: {
+          [sortBy]: order,
+        },
+      }),
+      prisma.transaction.count({
+        where,
+      }),
+    ]);
 
     return res.json({
       success: true,
       data: transactions,
       pagination: {
-        page,
-        limit,
+        page: pageNumber,
+        limit: limitNumber,
         total,
-        totalPages: Math.ceil(
-          total / limit
-        ),
+        totalPages: Math.ceil(total/limitNumber),
       },
     });
-  } catch (error) {
-    console.error(error);
-
+  } catch (err) {
+    console.error(err);
     return res.status(500).json({
       success: false,
       message: "Failed to fetch transactions",
     });
   }
-}
+};
 
 export const getTransactionById = async (req: AuthRequest,res: Response) => {
   try {
@@ -179,7 +190,7 @@ export const deleteTransaction = async (req: AuthRequest,res: Response) => {
       },
     });
 
-    if (!existing) {
+    if(!existing){
       return res.status(404).json({
         success: false,
         message: "Transaction not found",
@@ -206,3 +217,137 @@ export const deleteTransaction = async (req: AuthRequest,res: Response) => {
   }
 }
 
+export const getSummary = async (req: AuthRequest,res: Response) => {
+  try {
+    const transactions =
+      await prisma.transaction.findMany({
+        where: {
+          userId: req.userId,
+        },
+      });
+
+    const totalIncome = transactions.filter((t) => t.type === "income").reduce((sum, t) => sum + t.amount,0);
+
+    const totalExpense = transactions.filter((t) => t.type === "expense").reduce((sum, t) => sum + t.amount,0);
+
+    const categoryTotals: Record<string,number> = {};
+
+    transactions.filter((t) => t.type === "expense")
+      .forEach((t) => {
+        categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+      });
+
+    let topSpendingCategory = "No expenses";
+
+    let highest = 0;
+
+    for (const key in categoryTotals) {
+      if(categoryTotals[key] > highest){
+        highest = categoryTotals[key];
+        topSpendingCategory = key;
+      }
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        totalIncome,
+        totalExpense,
+        netBalance: totalIncome - totalExpense,
+        topSpendingCategory,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to generate summary",
+    });
+  }
+}
+
+export const getChart = async (req: AuthRequest,res: Response) => {
+  try {
+    const expenses = await prisma.transaction.findMany({
+        where: {
+          userId: req.userId,
+          type: "expense",
+        },
+      });
+
+    const totals: Record<string,number> = {};
+    expenses.forEach((t) => {
+      totals[t.category] = (totals[t.category] || 0) + t.amount;
+    });
+
+    const data = Object.entries(totals).map(([category, total]) => ({
+        category,
+        total,
+      })
+    );
+
+    return res.json({
+      success: true,
+      data,
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to generate chart data",
+    });
+  }
+}
+
+export const getInsight = async (req: AuthRequest, res: Response) => {
+  try {
+    const transactions = await prisma.transaction.findMany({
+        where: {
+          userId: req.userId,
+        },
+      });
+
+    const income = transactions.filter((t) => t.type === "income").reduce((sum, t) => sum + t.amount,0);
+
+    const expenses = transactions.filter((t) => t.type === "expense");
+
+    const totalExpense = expenses.reduce((sum, t) => sum + t.amount,0);
+
+    if (expenses.length === 0) {
+      return res.json({
+        success: true,
+        message:
+          "Add some expenses to unlock insights.",
+      });
+    }
+
+    const categoryTotals: Record<string,number> = {};
+    expenses.forEach((t) => {
+      categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+    });
+
+    const sorted = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+
+    const [topCategory, amount] = sorted[0];
+
+    if(income > 0 && totalExpense > income){
+      return res.json({
+        success: true,
+        message: `Your expenses exceed your income by ₹${(totalExpense -income).toFixed(2)}.`,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: `${topCategory} accounts for ${((amount /totalExpense)*100).toFixed(1)}% of your expenses.`,
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message:"Failed to generate insight",
+    });
+  }
+}

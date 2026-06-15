@@ -3,12 +3,22 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma";
 import { AuthRequest } from "../middleware/auth.middleware";
+import {registerSchema, loginSchema} from "../validations/auth.validation.ts";
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { name, email, password } = req.body;
+    const parsed = registerSchema.safeParse(req.body);
 
-    if (!name || !email || !password) {
+    if(!parsed.success){
+      return res.status(400).json({
+        success: false,
+        errors: parsed.error.flatten().fieldErrors,
+      });
+    }
+
+    const { name, email, password } = parsed.data;
+
+    if(!name || !email || !password){
       return res.status(400).json({
         success: false,
         message: "All fields are required",
@@ -16,10 +26,10 @@ export const register = async (req: Request, res: Response) => {
     }
 
     const existing = await prisma.user.findUnique({
-      where: { email },
+      where: {email},
     });
 
-    if (existing) {
+    if(existing){
       return res.status(409).json({
         success: false,
         message: "Email already exists",
@@ -51,7 +61,7 @@ export const register = async (req: Request, res: Response) => {
         email: user.email,
       },
     });
-  } catch (err) {
+  }catch(err){
     console.error(err);
 
     return res.status(500).json({
@@ -63,10 +73,10 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email,password} = req.body;
 
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email},
     });
 
     if (!user) {
