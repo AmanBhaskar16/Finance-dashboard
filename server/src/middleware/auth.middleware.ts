@@ -5,7 +5,7 @@ export interface AuthRequest extends Request {
   userId?: string;
 }
 
-export function authenticate(req: AuthRequest,res: Response,next: NextFunction) {
+export const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const header = req.headers.authorization;
 

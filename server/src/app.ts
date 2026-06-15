@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/auth.routes";
+import transactionRoutes from "./routes/transaction.routes";
 
 const app = express();
 
@@ -15,5 +16,6 @@ app.get("/", (_, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/transactions", transactionRoutes);
 
 export default app;
