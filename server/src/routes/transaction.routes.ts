@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { authenticate } from "../middleware/auth.middleware.ts";
-import {createTransaction,getTransactions,getTransactionById,updateTransaction,deleteTransaction, getInsight, getChart, getSummary} from "../controllers/transaction.controller.ts";
+import { authenticate } from "../middleware/auth.middleware";
+import {createTransaction,getTransactions,getTransactionById,updateTransaction,deleteTransaction, getInsight, getChart, getSummary} from "../controllers/transaction.controller";
 import { validate } from "../middleware/validate.middleware";
 import { validateQuery } from "../middleware/validateQuery.middleware";
-import { createTransactionSchema,updateTransactionSchema } from "../validations/transaction.validation.ts";
-import {transactionQuerySchema} from "../validations/query.validation.ts";
+import { createTransactionSchema,updateTransactionSchema } from "../validations/transaction.validation";
+import {transactionQuerySchema} from "../validations/query.validation";
 
 const router = Router();
 

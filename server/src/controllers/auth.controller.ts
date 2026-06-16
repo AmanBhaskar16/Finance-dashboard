@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma";
 import { AuthRequest } from "../middleware/auth.middleware";
-import {registerSchema, loginSchema} from "../validations/auth.validation.ts";
+import {registerSchema, loginSchema} from "../validations/auth.validation";
 
 export const register = async (req: Request, res: Response) => {
   try {
