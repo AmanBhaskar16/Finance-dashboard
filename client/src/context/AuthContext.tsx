@@ -31,31 +31,27 @@ export function AuthProvider({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchUser() {
-      const token = localStorage.getItem("token");
+  async function fetchUser() {
+    const token = localStorage.getItem("token");
 
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const res = await api.get("/auth/me");
-
-        // Expected backend response:
-        // { success: true, user: {...} }
-
-        setUser(res.data.user);
-      } catch {
-        localStorage.removeItem("token");
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
+    if (!token) {
+      setLoading(false);
+      return;
     }
 
-    fetchUser();
-  }, []);
+    try {
+      const res = await api.get("/auth/me");
+      setUser(res.data.user); // after backend fix
+    } catch {
+      localStorage.removeItem("token");
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  fetchUser();
+}, []);
 
   function login(token: string, user: User) {
     localStorage.setItem("token", token);
