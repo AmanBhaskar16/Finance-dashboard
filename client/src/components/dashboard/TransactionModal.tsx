@@ -48,7 +48,7 @@ export default function TransactionModal({
       type: "expense",
       date: "",
       note: "",
-    },
+    } ,
   });
 
   useEffect(() => {

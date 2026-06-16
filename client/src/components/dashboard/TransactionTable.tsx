@@ -37,6 +37,8 @@ export default function TransactionTable({
     type: "",
     startDate: "",
     endDate: "",
+    sortBy: "date", 
+    order: "desc" 
   });
 
   async function fetchTransactions(currentPage = page) {
