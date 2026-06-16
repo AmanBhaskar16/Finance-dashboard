@@ -61,7 +61,10 @@ export const getTransactions = async (req: AuthRequest, res: Response) => {
     const limitNumber = Number(limit);
 
     if (category) {
-      where.category = category;
+      where.category = {
+        contains: String(category).trim(),
+        mode: "insensitive",
+      };
     }
 
     if (type) {

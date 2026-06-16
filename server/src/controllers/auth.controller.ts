@@ -137,7 +137,10 @@ export const me = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    return res.json(user);
+    return res.json({
+      success: true,
+      user
+    });
   } catch {
     return res.status(500).json({
       success: false,
